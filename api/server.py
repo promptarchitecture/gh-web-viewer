@@ -19,6 +19,7 @@ OUTPUT_DIR = PROJECT_ROOT / "output" / "latest"
 CONTROLS_PATH = OUTPUT_DIR / "controls.json"
 MANIFEST_PATH = OUTPUT_DIR / "manifest.json"
 SUMMARY_PATH = OUTPUT_DIR / "summary.json"
+MODEL_PATH = OUTPUT_DIR / "current-preview.3dm"
 
 
 def env_path(name: str, default: Path) -> Path:
@@ -83,6 +84,14 @@ def load_summary() -> dict[str, Any]:
 
 def load_manifest() -> dict[str, Any]:
     return read_json(PUBLISHED_MANIFEST_PATH if PUBLISHED_MANIFEST_PATH.exists() else MANIFEST_PATH, {})
+
+
+def resolve_model_path() -> Path | None:
+    if PUBLISHED_MODEL_PATH.exists():
+        return PUBLISHED_MODEL_PATH
+    if MODEL_PATH.exists():
+        return MODEL_PATH
+    return None
 
 
 def load_state() -> dict[str, Any]:
@@ -205,13 +214,14 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
 
         if path == "/api/published/model":
-            if not PUBLISHED_MODEL_PATH.exists():
+            model_path = resolve_model_path()
+            if model_path is None:
                 self.send_response(HTTPStatus.NOT_FOUND)
                 self.end_headers()
                 return
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Content-Length", str(PUBLISHED_MODEL_PATH.stat().st_size))
+            self.send_header("Content-Length", str(model_path.stat().st_size))
             self.end_headers()
             return
 
@@ -280,10 +290,11 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/published/model":
-            if not PUBLISHED_MODEL_PATH.exists():
+            model_path = resolve_model_path()
+            if model_path is None:
                 self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Published model not found"})
                 return
-            self.send_bytes(HTTPStatus.OK, PUBLISHED_MODEL_PATH.read_bytes(), "application/octet-stream")
+            self.send_bytes(HTTPStatus.OK, model_path.read_bytes(), "application/octet-stream")
             return
 
         if path == "/api/jobs":
