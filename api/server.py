@@ -200,6 +200,40 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.NO_CONTENT)
         self.end_headers()
 
+    def do_HEAD(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+
+        if path == "/api/published/model":
+            if not PUBLISHED_MODEL_PATH.exists():
+                self.send_response(HTTPStatus.NOT_FOUND)
+                self.end_headers()
+                return
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(PUBLISHED_MODEL_PATH.stat().st_size))
+            self.end_headers()
+            return
+
+        if path == "/api/published/summary":
+            body = json.dumps(load_summary(), ensure_ascii=False).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return
+
+        if path == "/api/published/manifest":
+            body = json.dumps(load_manifest(), ensure_ascii=False).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return
+
+        self.send_response(HTTPStatus.NOT_FOUND)
+        self.end_headers()
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
