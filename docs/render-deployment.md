@@ -77,12 +77,15 @@ All three should respond with JSON.
 
 Take the Render URL and copy it into:
 
-- `web/site-config.production.example.json`
+- `web/site-config.production.json`
 
 Specifically:
 
 - `controls_api_url`
 - `jobs_api_url`
+
+The static export script now reads `web/site-config.production.json` automatically
+when building the GitHub Pages bundle.
 
 ## Important limitation for the MVP
 

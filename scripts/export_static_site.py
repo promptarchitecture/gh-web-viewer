@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = PROJECT_ROOT / "web"
 OUTPUT_DIR = PROJECT_ROOT / "output" / "latest"
 DIST_DIR = PROJECT_ROOT / "dist-static"
+PRODUCTION_SITE_CONFIG_PATH = WEB_DIR / "site-config.production.json"
 
 COPY_FILES = [
     "rhino-viewer.html",
@@ -50,12 +51,16 @@ def export_static_site(destination: Path) -> Path:
     for source, target in assets.items():
         copy_file(source, target)
 
-    config = {
-        "mode": "static_export",
-        "controls_api_url": None,
-        "auto_refresh_enabled": False,
-        "generated_from": str(PROJECT_ROOT),
-    }
+    if PRODUCTION_SITE_CONFIG_PATH.exists():
+        config = json.loads(PRODUCTION_SITE_CONFIG_PATH.read_text(encoding="utf-8"))
+    else:
+        config = {
+            "mode": "static_export",
+            "controls_api_url": None,
+            "auto_refresh_enabled": False,
+        }
+
+    config["generated_from"] = str(PROJECT_ROOT)
     (destination / "site-config.json").write_text(
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

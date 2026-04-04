@@ -1,0 +1,6 @@
+{
+  "mode": "dynamic_remote",
+  "controls_api_url": "https://gh-web-viewer-api.onrender.com/api/controls",
+  "jobs_api_url": "https://gh-web-viewer-api.onrender.com/api/jobs",
+  "auto_refresh_enabled": true
+}
