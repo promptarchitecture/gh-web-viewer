@@ -34,6 +34,9 @@ def export_static_site(destination: Path) -> Path:
     for name in COPY_FILES:
         copy_file(WEB_DIR / name, destination / name)
 
+    # GitHub Pages opens the repository root URL with index.html.
+    copy_file(WEB_DIR / "rhino-viewer.html", destination / "index.html")
+
     vendor_src = WEB_DIR / "vendor"
     if vendor_src.exists():
         shutil.copytree(vendor_src, destination / "vendor")
