@@ -34,6 +34,8 @@ You already have:
    - `promptarchitecture/gh-web-viewer`
 5. If Render asks for a blueprint file, the repo already includes:
    - `render.yaml`
+6. If you want browser-side autofill for the manual form:
+   - see `docs/render-autofill-helper.md`
 
 ## Expected Render service settings
 
@@ -42,7 +44,7 @@ If you create the service manually, use:
 - Runtime:
   - `Python`
 - Root Directory:
-  - `rhino/gh-web-viewer`
+  - leave it empty
 - Build Command:
   - `mkdir -p api/data`
 - Start Command:

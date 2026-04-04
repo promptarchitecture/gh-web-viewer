@@ -3,7 +3,6 @@ services:
     name: gh-web-viewer-api
     runtime: python
     plan: free
-    rootDir: rhino/gh-web-viewer
     buildCommand: mkdir -p api/data
     startCommand: python3 api/server.py
     healthCheckPath: /health
