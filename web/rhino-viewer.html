@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rhino 3DM Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="control-panel">
+        <div class="panel-header">
+          <p class="eyebrow">Published GH Preview</p>
+          <h1>3DM Web Viewer</h1>
+          <p class="panel-copy">
+            This page now loads the latest Grasshopper-published 3DM result in
+            the browser without a `glb` conversion step.
+          </p>
+        </div>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2>Model File</h2>
+            <span class="status-pill" id="viewer-status">Waiting to load</span>
+          </div>
+
+          <label class="field">
+            <span>3DM Path</span>
+            <input
+              id="model-file-input"
+              type="text"
+              value="./current-model.3dm"
+              spellcheck="false"
+            />
+          </label>
+
+          <button id="load-3dm-button" type="button">Load 3DM Model</button>
+          <button id="rhino-view-button" class="ghost-button" type="button">
+            Match Rhino Perspective
+          </button>
+          <button id="fit-gh-button" class="ghost-button" type="button">
+            Focus GH Result
+          </button>
+          <label class="toggle">
+            <input id="auto-refresh-toggle" type="checkbox" />
+            <span>Auto refresh from GH publish</span>
+          </label>
+          <p class="hint">
+            `current-model.3dm` now points to the latest file published from the
+            Grasshopper preview pipeline.
+          </p>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2 id="controls-title">웹 제어 입력</h2>
+            <span class="status-pill" id="controls-status">Waiting</span>
+          </div>
+          <div id="controls-list" class="controls-list"></div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Current Goal</h2>
+          <p class="hint">
+            This is the fastest way to publish the current Rhino modeling result
+            to the web before adding Grasshopper parameter control.
+          </p>
+        </section>
+      </aside>
+
+      <main class="viewer-panel">
+        <div class="viewer-toolbar">
+          <div>
+            <p class="eyebrow">Interactive View</p>
+            <h2>Rhino Scene</h2>
+          </div>
+          <div class="viewer-stats">
+            <span id="viewer-meta">Orbit: drag / Zoom: wheel / Pan: right-drag</span>
+          </div>
+        </div>
+
+        <div class="viewer-frame">
+          <div id="rhino-canvas" class="rhino-canvas"></div>
+          <div id="canvas-empty-state" class="empty-state">
+            <p>No 3DM model loaded yet.</p>
+            <p class="hint">Press “Load 3DM Model” to preview the Rhino file.</p>
+          </div>
+          <aside class="summary-panel" id="summary-panel" hidden>
+            <p class="summary-title" id="summary-title">SUMMARY</p>
+            <div id="summary-sections" class="summary-sections"></div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="./rhino-viewer.js"></script>
+  </body>
+</html>

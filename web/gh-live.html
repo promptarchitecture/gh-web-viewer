@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GH Live Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="control-panel">
+        <div class="panel-header">
+          <p class="eyebrow">Grasshopper Live Contract</p>
+          <h1>GH Live Viewer</h1>
+          <p class="panel-copy">
+            This page watches the latest exported Grasshopper result through a
+            manifest file.
+          </p>
+        </div>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2>Manifest</h2>
+            <span class="status-pill" id="manifest-status">Waiting</span>
+          </div>
+
+          <label class="field">
+            <span>Manifest Path</span>
+            <input
+              id="manifest-path-input"
+              type="text"
+              value="../output/latest/manifest.json"
+              spellcheck="false"
+            />
+          </label>
+
+          <button id="refresh-manifest-button" type="button">
+            Refresh Manifest
+          </button>
+
+          <label class="toggle">
+            <input id="manifest-auto-refresh" type="checkbox" checked />
+            <span>Auto refresh every 3s</span>
+          </label>
+        </section>
+
+        <section class="panel-section">
+          <h2>Latest Result</h2>
+          <p class="hint" id="manifest-meta">
+            Waiting for the latest Grasshopper export metadata.
+          </p>
+        </section>
+      </aside>
+
+      <main class="viewer-panel">
+        <div class="viewer-toolbar">
+          <div>
+            <p class="eyebrow">Interactive View</p>
+            <h2>Latest GH Result</h2>
+          </div>
+          <div class="viewer-stats">
+            <span id="result-summary">No manifest loaded yet</span>
+          </div>
+        </div>
+
+        <div class="viewer-frame">
+          <div id="rhino-canvas" class="rhino-canvas"></div>
+          <div id="canvas-empty-state" class="empty-state">
+            <p>No exported Grasshopper model loaded yet.</p>
+            <p class="hint">
+              Update `output/latest/manifest.json` and the linked model file.
+            </p>
+          </div>
+          <aside class="summary-panel" id="summary-panel" hidden>
+            <p class="summary-title" id="summary-title">SUMMARY</p>
+            <div id="summary-sections" class="summary-sections"></div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="./gh-live.js"></script>
+  </body>
+</html>

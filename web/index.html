@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GH Web Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="control-panel">
+        <div class="panel-header">
+          <p class="eyebrow">Rhino + Grasshopper</p>
+          <h1>GH Web Viewer</h1>
+          <p class="panel-copy">
+            Start with a local model preview, then replace the mock parameter
+            update with a real Grasshopper execution endpoint.
+          </p>
+        </div>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2>Model Source</h2>
+            <span class="status-pill" id="model-status">Waiting for model</span>
+          </div>
+          <label class="field">
+            <span>GLB Path</span>
+            <input
+              id="model-path"
+              type="text"
+              value="../output/model.glb"
+              spellcheck="false"
+            />
+          </label>
+          <button id="load-model-button" type="button">Load Model</button>
+          <p class="hint">
+            Export a Rhino or Grasshopper result to `glb`, then load it here.
+          </p>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2>Parameters</h2>
+            <button id="reset-button" class="ghost-button" type="button">
+              Reset
+            </button>
+          </div>
+
+          <label class="field">
+            <span>Donation Ratio</span>
+            <input
+              id="ratio-range"
+              type="range"
+              min="0"
+              max="100"
+              value="40"
+            />
+            <strong id="ratio-value">40%</strong>
+          </label>
+
+          <label class="field">
+            <span>Height Factor</span>
+            <input
+              id="height-range"
+              type="range"
+              min="1"
+              max="20"
+              value="8"
+            />
+            <strong id="height-value">8</strong>
+          </label>
+
+          <label class="field">
+            <span>Twist Amount</span>
+            <input
+              id="twist-range"
+              type="range"
+              min="0"
+              max="60"
+              value="12"
+            />
+            <strong id="twist-value">12deg</strong>
+          </label>
+
+          <button id="apply-button" type="button">Apply Mock Update</button>
+          <p class="hint">
+            This currently updates the preview state only. Later we can connect
+            it to Rhino Compute, Hops, or a custom bridge.
+          </p>
+        </section>
+
+        <section class="panel-section">
+          <h2>Next Integration Step</h2>
+          <ol class="step-list">
+            <li>Export a test `glb` from Rhino.</li>
+            <li>Load it in this viewer.</li>
+            <li>Replace the mock update with a Grasshopper API call.</li>
+          </ol>
+        </section>
+      </aside>
+
+      <main class="viewer-panel">
+        <div class="viewer-toolbar">
+          <div>
+            <p class="eyebrow">Viewer</p>
+            <h2>Web Preview</h2>
+          </div>
+          <div class="viewer-stats">
+            <span id="parameter-summary">Ratio 40% / Height 8 / Twist 12deg</span>
+          </div>
+        </div>
+
+        <div class="viewer-frame">
+          <model-viewer
+            id="model-viewer"
+            alt="Rhino export preview"
+            camera-controls
+            auto-rotate
+            shadow-intensity="1"
+            exposure="1"
+            environment-image="neutral"
+            interaction-prompt="auto"
+          >
+          </model-viewer>
+          <div id="empty-state" class="empty-state">
+            <p>No model loaded yet.</p>
+            <p class="hint">Load a `.glb` export to preview it here.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
+    ></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

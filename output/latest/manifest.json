@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-04T15:07:53+09:00",
+  "format": "3dm",
+  "model_path": "../output/latest/current-preview.3dm",
+  "source": {
+    "gh_file": "/Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/rhino/grasshopper/260402_기부채납 비율 검토 _ 타워.gh",
+    "notes": "Published directly from Grasshopper preview geometry only"
+  },
+  "camera": {
+    "mode": "rhino_perspective"
+  }
+}

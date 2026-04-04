@@ -1,0 +1,44 @@
+{
+  "title": "웹 제어 입력",
+  "items": [
+    {
+      "id": "2bdfc5f8-aebe-48ea-a256-ed8d05911606",
+      "key": "site_donation_ratio",
+      "label": "대지 기부채납 비율",
+      "type": "range",
+      "min": 5,
+      "max": 15,
+      "step": 0.1,
+      "value": 12.5
+    },
+    {
+      "id": "62c199e1-9456-41a6-ac85-bff01a00ccb3",
+      "key": "max_height",
+      "label": "최고 높이",
+      "type": "range",
+      "min": 70,
+      "max": 115,
+      "step": 1,
+      "value": 81.0
+    },
+    {
+      "id": "09a1e5b4-e126-4e65-ad06-cbc8081a00c7",
+      "key": "floor_height",
+      "label": "층고",
+      "type": "range",
+      "min": 2.8,
+      "max": 3.1,
+      "step": 0.01,
+      "value": 2.9
+    },
+    {
+      "id": "4ac7ffaa-04ea-40f4-8f7c-42f9f3cc70bb",
+      "key": "donation_mode",
+      "label": "기부채납 건물/임대 선택",
+      "type": "toggle",
+      "value": false,
+      "false_label": "False _ 임대주택 기부채납",
+      "true_label": "True _ 건축물 기부채납"
+    }
+  ]
+}

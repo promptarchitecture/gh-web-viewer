@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rhino Live View</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="live-shell">
+      <header class="live-header">
+        <div>
+          <p class="eyebrow">Current Rhino Screen</p>
+          <h1>Viewport Live Page</h1>
+          <p class="panel-copy">
+            This page displays the latest exported Rhino viewport image from the
+            project folder.
+          </p>
+        </div>
+        <div class="live-actions">
+          <button id="refresh-button" type="button">Refresh Image</button>
+          <label class="toggle">
+            <input id="auto-refresh" type="checkbox" checked />
+            <span>Auto refresh</span>
+          </label>
+        </div>
+      </header>
+
+      <main class="live-stage">
+        <img
+          id="viewport-image"
+          src="../output/viewport-latest.png"
+          alt="Rhino viewport snapshot"
+        />
+        <div class="live-overlay">
+          <span class="status-pill" id="image-status">Waiting for snapshot</span>
+          <span id="timestamp-label">No image loaded yet</span>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="./live-view.js"></script>
+  </body>
+</html>
