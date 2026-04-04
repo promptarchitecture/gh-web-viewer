@@ -1,0 +1,6 @@
+{
+  "mode": "dynamic_remote",
+  "controls_api_url": "https://your-control-api.example.com/api/controls",
+  "jobs_api_url": "https://your-control-api.example.com/api/jobs",
+  "auto_refresh_enabled": true
+}

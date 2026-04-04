@@ -29,6 +29,8 @@ let controlsConfig = null;
 let siteConfig = null;
 const pendingControlTimers = new Map();
 
+const jobsAreEnabled = () => Boolean(siteConfig?.jobs_api_url);
+
 const setStatus = (message) => {
   statusLabel.textContent = message;
 };
@@ -39,7 +41,7 @@ const setControlsStatus = (message) => {
 
 const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
-const controlsAreEditable = () => Boolean(siteConfig?.controls_api_url);
+const controlsAreEditable = () => Boolean(siteConfig?.controls_api_url || siteConfig?.jobs_api_url);
 
 const updateControlDisplay = (controlId, value) => {
   const card = controlsList.querySelector(`[data-control-id="${controlId}"]`);
@@ -217,6 +219,57 @@ const loadControls = async () => {
 };
 
 const postControlUpdate = async (controlId, value) => {
+  if (jobsAreEnabled()) {
+    const response = await fetch(siteConfig.jobs_api_url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: controlId, value }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const jobId = payload?.job?.id;
+    if (!jobId) {
+      throw new Error("Queued job response did not include a job id.");
+    }
+
+    setControlsStatus("Queued");
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 30000) {
+      await wait(500);
+
+      const jobResponse = await fetch(`${siteConfig.jobs_api_url}/${jobId}?t=${Date.now()}`);
+      if (!jobResponse.ok) {
+        throw new Error(`Job status request failed: ${jobResponse.status}`);
+      }
+
+      const jobPayload = await jobResponse.json();
+      const job = jobPayload?.job;
+      if (!job) {
+        throw new Error("Job status payload is missing the job object.");
+      }
+
+      if (job.status === "completed") {
+        return job.result || { ok: true };
+      }
+
+      if (job.status === "failed") {
+        throw new Error(job.error || "Queued job failed.");
+      }
+
+      setControlsStatus(job.status === "running" ? "Applying" : "Queued");
+    }
+
+    throw new Error("Timed out waiting for Grasshopper update.");
+  }
+
   const response = await fetch(siteConfig.controls_api_url, {
     method: "POST",
     headers: {
@@ -321,6 +374,7 @@ const loadSiteConfig = async () => {
     siteConfig = {
       mode: "local_interactive",
       controls_api_url: DEFAULT_CONTROLS_API_URL,
+      jobs_api_url: null,
       auto_refresh_enabled: true,
     };
   }

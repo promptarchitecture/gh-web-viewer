@@ -54,3 +54,19 @@ This project now includes a GitHub Pages deployment workflow.
   - `docs/github-pages.md`
 
 The workflow exports `dist-static` on GitHub Actions and deploys that bundle to Pages.
+
+## Dynamic deployment scaffold
+
+The next deployment step is split into two new folders:
+
+- `api`
+  - public control API scaffold
+- `runner`
+  - Rhino-side worker scaffold
+
+Reference notes:
+
+- `api/README.md`
+- `runner/README.md`
+- `docs/dynamic-deployment.md`
+- `docs/render-deployment.md`

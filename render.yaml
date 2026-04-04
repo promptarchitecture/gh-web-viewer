@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: gh-web-viewer-api
+    runtime: python
+    plan: free
+    rootDir: rhino/gh-web-viewer
+    buildCommand: mkdir -p api/data
+    startCommand: python3 api/server.py
+    healthCheckPath: /health
+    envVars:
+      - key: GHWV_ALLOWED_ORIGIN
+        value: https://promptarchitecture.github.io
+      - key: GHWV_API_DATA_DIR
+        value: /tmp/ghwv-api-data
