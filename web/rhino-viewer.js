@@ -10,6 +10,7 @@ const autoRefreshToggle = document.querySelector("#auto-refresh-toggle");
 const controlsTitle = document.querySelector("#controls-title");
 const controlsStatus = document.querySelector("#controls-status");
 const controlsList = document.querySelector("#controls-list");
+const emptyState = document.querySelector("#canvas-empty-state");
 const summaryPanel = document.querySelector("#summary-panel");
 const summaryTitle = document.querySelector("#summary-title");
 const summarySections = document.querySelector("#summary-sections");
@@ -432,6 +433,9 @@ const loadPublishedModel = async ({ preserveStatus = false } = {}) => {
   }
 
   await viewer.loadModel(requestPath);
+  if (emptyState) {
+    emptyState.hidden = true;
+  }
   const styled = viewer.stylePublishedModel();
   await loadSummary();
   applyPublishedModelView(styled);
@@ -469,6 +473,9 @@ const loadModel = async () => {
         ? `${rawPath}&t=${Date.now()}`
         : `${rawPath}?t=${Date.now()}`;
       await viewer.loadModel(requestPath);
+      if (emptyState) {
+        emptyState.hidden = true;
+      }
       applyRhinoPerspectiveView();
       setStatus("3DM loaded");
     }
