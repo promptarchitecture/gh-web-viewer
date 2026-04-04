@@ -70,3 +70,4 @@ Reference notes:
 - `runner/README.md`
 - `docs/dynamic-deployment.md`
 - `docs/render-deployment.md`
+- `docs/operations-manual.md`
