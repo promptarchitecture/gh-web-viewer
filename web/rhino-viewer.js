@@ -30,6 +30,34 @@ let siteConfig = null;
 const pendingControlTimers = new Map();
 
 const jobsAreEnabled = () => Boolean(siteConfig?.jobs_api_url);
+const remotePublishedAssetsEnabled = () => siteConfig?.mode === "dynamic_remote";
+
+const deriveApiBase = () => {
+  const candidate = siteConfig?.jobs_api_url || siteConfig?.controls_api_url || "";
+  if (!candidate) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidate);
+    return url.origin;
+  } catch (error) {
+    console.warn("Could not derive API base from site config.", error);
+    return null;
+  }
+};
+
+const getPublishedModelUrl = () =>
+  siteConfig?.published_model_url ||
+  (deriveApiBase() ? `${deriveApiBase()}/api/published/model` : "./current-model.3dm");
+
+const getPublishedSummaryUrl = () =>
+  siteConfig?.published_summary_url ||
+  (deriveApiBase() ? `${deriveApiBase()}/api/published/summary` : SUMMARY_PATH);
+
+const getPublishedManifestUrl = () =>
+  siteConfig?.published_manifest_url ||
+  (deriveApiBase() ? `${deriveApiBase()}/api/published/manifest` : MANIFEST_PATH);
 
 const setStatus = (message) => {
   statusLabel.textContent = message;
@@ -382,7 +410,7 @@ const loadSiteConfig = async () => {
 
 const loadSummary = async () => {
   try {
-    const response = await fetch(`${SUMMARY_PATH}?t=${Date.now()}`);
+    const response = await fetch(`${getPublishedSummaryUrl()}?t=${Date.now()}`);
     if (!response.ok) {
       throw new Error(`Summary request failed: ${response.status}`);
     }
@@ -395,7 +423,7 @@ const loadSummary = async () => {
 };
 
 const loadPublishedModel = async ({ preserveStatus = false } = {}) => {
-  const rawPath = "./current-model.3dm";
+  const rawPath = getPublishedModelUrl();
   const requestPath = `${rawPath}?t=${Date.now()}`;
 
   if (!preserveStatus) {
@@ -411,7 +439,7 @@ const loadPublishedModel = async ({ preserveStatus = false } = {}) => {
 };
 
 const readManifest = async () => {
-  const response = await fetch(`${MANIFEST_PATH}?t=${Date.now()}`);
+  const response = await fetch(`${getPublishedManifestUrl()}?t=${Date.now()}`);
   if (!response.ok) {
     throw new Error(`Manifest request failed: ${response.status}`);
   }
@@ -431,7 +459,9 @@ const loadModel = async () => {
 
   try {
     const isPublishedGhModel =
-      rawPath.includes("current-model.3dm") || rawPath.includes("current-preview.3dm");
+      rawPath.includes("current-model.3dm") ||
+      rawPath.includes("current-preview.3dm") ||
+      rawPath.includes("/api/published/model");
     if (isPublishedGhModel) {
       await loadPublishedModel({ preserveStatus: true });
     } else {
@@ -471,7 +501,9 @@ const syncAutoRefresh = () => {
         }
 
         if (updatedAt !== lastManifestUpdatedAt) {
-          modelInput.value = "./current-model.3dm";
+          modelInput.value = remotePublishedAssetsEnabled()
+            ? getPublishedModelUrl()
+            : "./current-model.3dm";
           await loadPublishedModel({ preserveStatus: true });
           lastManifestUpdatedAt = updatedAt;
           metaLabel.textContent = `Matched Rhino Perspective view / Auto-updated ${updatedAt}`;
@@ -504,6 +536,9 @@ const initViewer = async () => {
 
     setStatus("Viewer ready");
     await loadControls();
+    if (remotePublishedAssetsEnabled()) {
+      modelInput.value = getPublishedModelUrl();
+    }
     await loadModel();
     try {
       const manifest = await readManifest();

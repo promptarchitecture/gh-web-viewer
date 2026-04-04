@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import time
@@ -27,6 +28,11 @@ def env_path(name: str, default: Path) -> Path:
 
 API_DATA_DIR = env_path("GHWV_API_DATA_DIR", PROJECT_ROOT / "api" / "data")
 STATE_PATH = env_path("GHWV_STATE_PATH", API_DATA_DIR / "queue-state.json")
+PUBLISHED_DIR = API_DATA_DIR / "published"
+PUBLISHED_CONTROLS_PATH = PUBLISHED_DIR / "controls.json"
+PUBLISHED_SUMMARY_PATH = PUBLISHED_DIR / "summary.json"
+PUBLISHED_MANIFEST_PATH = PUBLISHED_DIR / "manifest.json"
+PUBLISHED_MODEL_PATH = PUBLISHED_DIR / "current-preview.3dm"
 PUBLIC_API_BASE_URL = os.environ.get("GHWV_PUBLIC_API_BASE_URL", "").strip()
 ALLOWED_ORIGIN = os.environ.get("GHWV_ALLOWED_ORIGIN", "*").strip() or "*"
 
@@ -45,24 +51,38 @@ class Job:
 
 def ensure_data_dir() -> None:
     API_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def read_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+    if not path.exists():
+        return fallback
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def load_controls() -> dict[str, Any]:
-    if not CONTROLS_PATH.exists():
-        return {"title": "웹 제어 입력", "items": []}
-    return json.loads(CONTROLS_PATH.read_text(encoding="utf-8"))
+    return read_json(
+        PUBLISHED_CONTROLS_PATH if PUBLISHED_CONTROLS_PATH.exists() else CONTROLS_PATH,
+        {"title": "웹 제어 입력", "items": []},
+    )
 
 
 def load_summary() -> dict[str, Any]:
-    if not SUMMARY_PATH.exists():
-        return {"title": "SUMMARY", "sections": []}
-    return json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+    return read_json(
+        PUBLISHED_SUMMARY_PATH if PUBLISHED_SUMMARY_PATH.exists() else SUMMARY_PATH,
+        {"title": "SUMMARY", "sections": []},
+    )
 
 
 def load_manifest() -> dict[str, Any]:
-    if not MANIFEST_PATH.exists():
-        return {}
-    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    return read_json(PUBLISHED_MANIFEST_PATH if PUBLISHED_MANIFEST_PATH.exists() else MANIFEST_PATH, {})
 
 
 def load_state() -> dict[str, Any]:
@@ -76,10 +96,7 @@ def load_state() -> dict[str, Any]:
 
 def save_state(state: dict[str, Any]) -> None:
     ensure_data_dir()
-    STATE_PATH.write_text(
-        json.dumps(state, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    write_json(STATE_PATH, state)
 
 
 def find_job(state: dict[str, Any], job_id: str) -> dict[str, Any] | None:
@@ -103,7 +120,46 @@ def build_public_config(host: str, port: int, request_headers: Any | None = None
         "mode": "dynamic_remote",
         "controls_api_url": f"{base_url}/api/controls",
         "jobs_api_url": f"{base_url}/api/jobs",
+        "published_model_url": f"{base_url}/api/published/model",
+        "published_summary_url": f"{base_url}/api/published/summary",
+        "published_manifest_url": f"{base_url}/api/published/manifest",
         "auto_refresh_enabled": True,
+    }
+
+
+def publish_payload(
+    payload: dict[str, Any],
+    host: str,
+    port: int,
+    request_headers: Any | None = None,
+) -> dict[str, Any]:
+    ensure_data_dir()
+    config = build_public_config(host, port, request_headers)
+
+    controls = payload.get("controls") or {"title": "웹 제어 입력", "items": []}
+    summary = payload.get("summary") or {"title": "SUMMARY", "sections": []}
+    manifest = payload.get("manifest") or {}
+    model_base64 = str(payload.get("model_base64", "")).strip()
+
+    write_json(PUBLISHED_CONTROLS_PATH, controls)
+    write_json(PUBLISHED_SUMMARY_PATH, summary)
+
+    manifest = {
+        **manifest,
+        "model_path": config["published_model_url"],
+        "summary_path": config["published_summary_url"],
+        "updated_at": manifest.get("updated_at") or time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    write_json(PUBLISHED_MANIFEST_PATH, manifest)
+
+    if model_base64:
+        PUBLISHED_MODEL_PATH.write_bytes(base64.b64decode(model_base64))
+
+    return {
+        "controls": controls,
+        "summary": summary,
+        "manifest": manifest,
+        "model_url": config["published_model_url"],
     }
 
 
@@ -126,6 +182,13 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def send_bytes(self, status: int, payload: bytes, content_type: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def parse_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
@@ -172,6 +235,21 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
         if path == "/api/config":
             host, port = self.server.server_address[:2]
             self.send_json(HTTPStatus.OK, build_public_config(host, port, self.headers))
+            return
+
+        if path == "/api/published/summary":
+            self.send_json(HTTPStatus.OK, load_summary())
+            return
+
+        if path == "/api/published/manifest":
+            self.send_json(HTTPStatus.OK, load_manifest())
+            return
+
+        if path == "/api/published/model":
+            if not PUBLISHED_MODEL_PATH.exists():
+                self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "Published model not found"})
+                return
+            self.send_bytes(HTTPStatus.OK, PUBLISHED_MODEL_PATH.read_bytes(), "application/octet-stream")
             return
 
         if path == "/api/jobs":
@@ -238,6 +316,12 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
                 state["jobs"].append(asdict(job))
                 save_state(state)
                 self.send_json(HTTPStatus.ACCEPTED, {"ok": True, "job": asdict(job)})
+                return
+
+            if path == "/api/published/sync":
+                host, port = self.server.server_address[:2]
+                published = publish_payload(payload, host, port, self.headers)
+                self.send_json(HTTPStatus.OK, {"ok": True, **published})
                 return
 
             if path.startswith("/api/jobs/") and path.endswith("/claim"):
