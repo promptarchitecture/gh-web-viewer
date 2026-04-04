@@ -86,8 +86,19 @@ def find_job(state: dict[str, Any], job_id: str) -> dict[str, Any] | None:
     return next((job for job in state["jobs"] if job["id"] == job_id), None)
 
 
-def build_public_config(host: str, port: int) -> dict[str, Any]:
-    base_url = PUBLIC_API_BASE_URL or f"http://{host}:{port}"
+def build_public_config(host: str, port: int, request_headers: Any | None = None) -> dict[str, Any]:
+    base_url = PUBLIC_API_BASE_URL
+
+    if not base_url and request_headers is not None:
+        forwarded_proto = request_headers.get("X-Forwarded-Proto", "").strip()
+        host_header = request_headers.get("Host", "").strip()
+        if host_header:
+            scheme = forwarded_proto or "https"
+            base_url = f"{scheme}://{host_header}"
+
+    if not base_url:
+        base_url = f"http://{host}:{port}"
+
     return {
         "mode": "dynamic_remote",
         "controls_api_url": f"{base_url}/api/controls",
@@ -160,7 +171,7 @@ class DeployControlApiHandler(BaseHTTPRequestHandler):
 
         if path == "/api/config":
             host, port = self.server.server_address[:2]
-            self.send_json(HTTPStatus.OK, build_public_config(host, port))
+            self.send_json(HTTPStatus.OK, build_public_config(host, port, self.headers))
             return
 
         if path == "/api/jobs":
