@@ -21,7 +21,7 @@ export const createRhinoViewerController = ({
   let currentModel = null;
 
   const encodePath = (path) => {
-    if (/^https?:\/\//i.test(path)) {
+    if (/^(https?:\/\/|blob:)/i.test(path)) {
       return path;
     }
 
