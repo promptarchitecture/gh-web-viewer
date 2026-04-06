@@ -72,35 +72,26 @@
 - GH 캔버스 안에 게시 컴포넌트가 살아 있는지 확인합니다.
 - Rhino와 GH를 다시 열었을 때도 웹이 바로 붙게 하려면 LaunchAgent를 먼저 설치해 두는 것이 가장 안전합니다.
 
-### 2단계. LaunchAgent를 한 번 설치하기
+### 2단계. 로컬 서비스 런처 실행
 
-터미널에서 한 번만 실행:
+현재 이 Mac에서는 LaunchAgent/무인 `nohup` 방식보다, Terminal에 실제 프로세스를 띄우는 방식이 더 안정적입니다.
+
+권장 실행:
 
 ```bash
-python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/install_mac_services.py
+/Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/open_local_services_in_terminal.sh
 ```
 
-설치되면 아래 두 프로세스가 로그인 시 자동 실행되고, 꺼져도 다시 살아납니다.
+이 스크립트는 Terminal 창 2개를 열고 아래 프로세스를 각각 실행합니다.
 
 - `gh_control_server.py`
-- `worker.py`
+- `worker.py --api-base https://gh-web-viewer-api.onrender.com --local-api-base http://127.0.0.1:8001 --insecure`
 
-설치 위치:
-
-- `~/Library/LaunchAgents/com.promptarchitecture.gh-web-viewer.control-server.plist`
-- `~/Library/LaunchAgents/com.promptarchitecture.gh-web-viewer.worker.plist`
-
-로그 위치:
-
-- `~/Library/Logs/gh-web-viewer/gh_control_server.stdout.log`
-- `~/Library/Logs/gh-web-viewer/gh_control_server.stderr.log`
-- `~/Library/Logs/gh-web-viewer/worker.stdout.log`
-- `~/Library/Logs/gh-web-viewer/worker.stderr.log`
-
-삭제:
+보조 스크립트:
 
 ```bash
-python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/install_mac_services.py --uninstall
+/Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/status_local_services.sh
+/Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/stop_local_services.sh
 ```
 
 ### 3단계. RhinoMCP 연결 확인
@@ -126,7 +117,7 @@ lsof -nP -iTCP:1999 -sTCP:LISTEN
 curl http://127.0.0.1:8001/api/health
 ```
 
-### 4단계. LaunchAgent를 쓰지 않을 때만 수동 실행
+### 4단계. 필요하면 수동 실행
 
 터미널 1:
 
@@ -226,15 +217,28 @@ Runner polling https://gh-web-viewer-api.onrender.com and forwarding jobs to htt
 
 뜻:
 
-- 예전엔 `gh_control_server.py`와 `worker.py`를 터미널로 띄웠기 때문에 세션이 쉽게 끊겼고
-- Rhino를 다시 열었을 때 `mcpstart`도 빠질 수 있었습니다
+- Rhino/GH를 다시 열면 로컬 `gh_control_server.py`와 `worker.py`가 같이 꺼졌거나,
+- Rhino MCP가 다시 붙지 않았을 수 있습니다
 
 현재 권장 해결:
 
-1. LaunchAgent 설치
-2. Rhino와 GH 파일 다시 열기
+1. Rhino와 GH 파일 다시 열기
+2. `/Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/open_local_services_in_terminal.sh` 실행
 3. 필요하면 Rhino 명령줄에 `mcpstart`
 4. [http://127.0.0.1:8001/api/health](http://127.0.0.1:8001/api/health) 확인
+
+### A-3. LaunchAgent/자동 백그라운드 실행이 기대처럼 안 됨
+
+뜻:
+
+- 이 Mac에서는 Rhino/GH 연동 Python 프로세스가 무인 백그라운드 시작에서 불안정할 수 있습니다
+
+해결:
+
+1. LaunchAgent보다 `open_local_services_in_terminal.sh`를 우선 사용
+2. Rhino와 GH 파일 다시 열기
+3. 필요하면 Rhino 명령줄에 `mcpstart`
+4. `status_local_services.sh` 또는 `curl http://127.0.0.1:8001/api/health`로 확인
 
 ### B. worker에서 `CERTIFICATE_VERIFY_FAILED`
 
