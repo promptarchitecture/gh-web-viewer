@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import socket
+import subprocess
 import sys
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,6 +26,12 @@ OUTPUT_DIR = PROJECT_ROOT / "output" / "latest"
 CONTROLS_PATH = OUTPUT_DIR / "controls.json"
 SUMMARY_PATH = OUTPUT_DIR / "summary.json"
 HUD_MERGE_GUID = "c208f853-6fa5-40b6-a749-26363b9e3254"
+RHINO_MCP_HOST = "127.0.0.1"
+RHINO_MCP_PORT = 1999
+RHINO_APP_PATH = Path("/Applications/Rhino 8.app")
+AUTO_RETRY_COOLDOWN_SECONDS = 5.0
+
+_LAST_MCPSTART_ATTEMPT = 0.0
 
 
 def load_controls() -> dict[str, Any]:
@@ -35,6 +45,66 @@ def save_controls(config: dict[str, Any]) -> None:
         json.dumps(config, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def rhino_listener_ready(host: str = RHINO_MCP_HOST, port: int = RHINO_MCP_PORT) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def wait_for_rhino_listener(timeout_seconds: float) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if rhino_listener_ready():
+            return True
+        time.sleep(0.25)
+    return rhino_listener_ready()
+
+
+def trigger_mcpstart_via_applescript() -> None:
+    if not RHINO_APP_PATH.exists():
+        raise RuntimeError(f"Rhino app not found at {RHINO_APP_PATH}.")
+
+    script = """
+tell application "Rhino 8"
+    activate
+end tell
+delay 0.6
+tell application "System Events"
+    keystroke "mcpstart"
+    key code 36
+end tell
+"""
+    subprocess.run(["open", "-a", str(RHINO_APP_PATH)], check=True)
+    subprocess.run(["osascript", "-e", script], check=True)
+
+
+def ensure_rhino_mcp_listener() -> None:
+    global _LAST_MCPSTART_ATTEMPT
+
+    if rhino_listener_ready():
+        return
+
+    now = time.monotonic()
+    if now - _LAST_MCPSTART_ATTEMPT >= AUTO_RETRY_COOLDOWN_SECONDS:
+        _LAST_MCPSTART_ATTEMPT = now
+        try:
+            trigger_mcpstart_via_applescript()
+        except Exception as error:
+            raise RuntimeError(
+                "RhinoMCP listener is not running and automatic `mcpstart` failed. "
+                "Open Rhino 8, keep Grasshopper visible, then run `mcpstart` in the Rhino command line. "
+                f"Auto-start error: {error}"
+            ) from error
+
+    if not wait_for_rhino_listener(8.0):
+        raise RuntimeError(
+            "RhinoMCP listener is not available on 127.0.0.1:1999. "
+            "Open Rhino 8, keep the Grasshopper canvas visible, and run `mcpstart`."
+        )
 
 
 def build_set_control_code(control_id: str, value: Any) -> str:
@@ -142,9 +212,10 @@ print(json.dumps(result, ensure_ascii=False))
 
 
 def run_rhino_control_update(control_id: str, value: Any) -> dict[str, Any]:
+    ensure_rhino_mcp_listener()
     resp = send_command(
-        "127.0.0.1",
-        1999,
+        RHINO_MCP_HOST,
+        RHINO_MCP_PORT,
         "execute_rhinoscript_python_code",
         {"code": build_set_control_code(control_id, value)},
     )
@@ -158,9 +229,10 @@ def run_rhino_control_update(control_id: str, value: Any) -> dict[str, Any]:
 
 
 def fetch_rhino_summary_lines() -> list[str]:
+    ensure_rhino_mcp_listener()
     resp = send_command(
-        "127.0.0.1",
-        1999,
+        RHINO_MCP_HOST,
+        RHINO_MCP_PORT,
         "execute_rhinoscript_python_code",
         {"code": build_summary_fetch_code()},
     )
@@ -269,6 +341,21 @@ class GhControlHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/health":
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "service": "gh_control_server",
+                    "controls_count": len(load_controls().get("items", [])),
+                    "rhino_mcp_listener": rhino_listener_ready(),
+                    "rhino_mcp_host": RHINO_MCP_HOST,
+                    "rhino_mcp_port": RHINO_MCP_PORT,
+                    "rhino_app_exists": RHINO_APP_PATH.exists(),
+                    "pid": os.getpid(),
+                },
+            )
+            return
         if parsed.path == "/api/controls":
             self.send_json(HTTPStatus.OK, load_controls())
             return

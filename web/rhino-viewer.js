@@ -29,6 +29,7 @@ let lastManifestUpdatedAt = null;
 let controlsConfig = null;
 let siteConfig = null;
 const pendingControlTimers = new Map();
+let remoteModelObjectUrl = null;
 
 const jobsAreEnabled = () => Boolean(siteConfig?.jobs_api_url);
 const remotePublishedAssetsEnabled = () => siteConfig?.mode === "dynamic_remote";
@@ -69,6 +70,49 @@ const setControlsStatus = (message) => {
 };
 
 const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const revokeRemoteModelObjectUrl = () => {
+  if (!remoteModelObjectUrl) {
+    return;
+  }
+
+  window.URL.revokeObjectURL(remoteModelObjectUrl);
+  remoteModelObjectUrl = null;
+};
+
+const addCacheBuster = (url) => {
+  try {
+    const parsed = new URL(url, window.location.href);
+    parsed.searchParams.set("t", String(Date.now()));
+    return parsed.toString();
+  } catch (error) {
+    return url.includes("?") ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
+  }
+};
+
+const resolveModelRequestPath = async (rawPath) => {
+  const requestPath = addCacheBuster(rawPath);
+
+  if (!/^https?:\/\//i.test(requestPath)) {
+    revokeRemoteModelObjectUrl();
+    return requestPath;
+  }
+
+  const response = await fetch(requestPath, {
+    method: "GET",
+    cache: "no-store",
+    mode: "cors",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Remote model request failed: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  revokeRemoteModelObjectUrl();
+  remoteModelObjectUrl = window.URL.createObjectURL(blob);
+  return remoteModelObjectUrl;
+};
 
 const controlsAreEditable = () => Boolean(siteConfig?.controls_api_url || siteConfig?.jobs_api_url);
 
@@ -425,7 +469,7 @@ const loadSummary = async () => {
 
 const loadPublishedModel = async ({ preserveStatus = false } = {}) => {
   const rawPath = getPublishedModelUrl();
-  const requestPath = `${rawPath}?t=${Date.now()}`;
+  const requestPath = await resolveModelRequestPath(rawPath);
 
   if (!preserveStatus) {
     setStatus("Loading 3DM...");
@@ -469,9 +513,7 @@ const loadModel = async () => {
     if (isPublishedGhModel) {
       await loadPublishedModel({ preserveStatus: true });
     } else {
-      const requestPath = rawPath.includes("?")
-        ? `${rawPath}&t=${Date.now()}`
-        : `${rawPath}?t=${Date.now()}`;
+      const requestPath = await resolveModelRequestPath(rawPath);
       await viewer.loadModel(requestPath);
       if (emptyState) {
         emptyState.hidden = true;

@@ -70,8 +70,63 @@
 - Rhino를 열고 작업 대상 `.3dm` 파일을 엽니다.
 - Grasshopper를 열고 대상 `.gh` 파일을 엽니다.
 - GH 캔버스 안에 게시 컴포넌트가 살아 있는지 확인합니다.
+- Rhino와 GH를 다시 열었을 때도 웹이 바로 붙게 하려면 LaunchAgent를 먼저 설치해 두는 것이 가장 안전합니다.
 
-### 2단계. 로컬 GH 제어 서버 켜기
+### 2단계. LaunchAgent를 한 번 설치하기
+
+터미널에서 한 번만 실행:
+
+```bash
+python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/install_mac_services.py
+```
+
+설치되면 아래 두 프로세스가 로그인 시 자동 실행되고, 꺼져도 다시 살아납니다.
+
+- `gh_control_server.py`
+- `worker.py`
+
+설치 위치:
+
+- `~/Library/LaunchAgents/com.promptarchitecture.gh-web-viewer.control-server.plist`
+- `~/Library/LaunchAgents/com.promptarchitecture.gh-web-viewer.worker.plist`
+
+로그 위치:
+
+- `~/Library/Logs/gh-web-viewer/gh_control_server.stdout.log`
+- `~/Library/Logs/gh-web-viewer/gh_control_server.stderr.log`
+- `~/Library/Logs/gh-web-viewer/worker.stdout.log`
+- `~/Library/Logs/gh-web-viewer/worker.stderr.log`
+
+삭제:
+
+```bash
+python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/install_mac_services.py --uninstall
+```
+
+### 3단계. RhinoMCP 연결 확인
+
+`gh_control_server.py`는 이제 RhinoMCP 포트가 죽어 있으면 자동으로 `mcpstart`를 한 번 시도합니다.
+
+그래도 안 붙으면 아래를 직접 확인합니다.
+
+- Rhino 8이 실제로 열려 있는지
+- Grasshopper 캔버스가 보이는지
+- 접근성 권한 때문에 자동 키입력이 막히지 않았는지
+
+직접 실행이 필요한 경우:
+
+```text
+Rhino 명령줄에 mcpstart 입력
+```
+
+빠른 확인:
+
+```bash
+lsof -nP -iTCP:1999 -sTCP:LISTEN
+curl http://127.0.0.1:8001/api/health
+```
+
+### 4단계. LaunchAgent를 쓰지 않을 때만 수동 실행
 
 터미널 1:
 
@@ -84,7 +139,7 @@ python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/scripts/gh_c
 - `OSError: [Errno 48] Address already in use`가 나오면 이미 켜져 있다는 뜻입니다.
 - 이 경우 다시 켤 필요가 없습니다.
 
-### 3단계. 로컬 worker 켜기
+### 5단계. 로컬 worker 켜기
 
 터미널 2:
 
@@ -106,12 +161,12 @@ Runner polling https://gh-web-viewer-api.onrender.com and forwarding jobs to htt
 - 이 상태면 worker는 job을 기다리는 중입니다.
 - 멈춘 것처럼 보여도 정상입니다.
 
-### 4단계. 공개 웹 열기
+### 6단계. 공개 웹 열기
 
 - [https://promptarchitecture.github.io/gh-web-viewer/](https://promptarchitecture.github.io/gh-web-viewer/) 열기
 - 브라우저에서 `Cmd+Shift+R`로 강력 새로고침
 
-### 5단계. 테스트
+### 7단계. 테스트
 
 권장 테스트:
 
@@ -140,8 +195,13 @@ Runner polling https://gh-web-viewer-api.onrender.com and forwarding jobs to htt
 
 ### 로컬 worker
 
-- worker 터미널이 살아 있음
+- worker LaunchAgent 또는 터미널 프로세스가 살아 있음
 - SSL 에러 없이 대기 중임
+
+### 로컬 GH 제어 서버
+
+- [http://127.0.0.1:8001/api/health](http://127.0.0.1:8001/api/health)가 열림
+- `rhino_mcp_listener: true`가 보이면 가장 좋음
 
 ### 공개 프론트
 
@@ -161,6 +221,20 @@ Runner polling https://gh-web-viewer-api.onrender.com and forwarding jobs to htt
 
 - 새로 띄우지 말고 그대로 둠
 - worker만 따로 실행
+
+### A-2. Rhino/GH를 껐다 켠 뒤 제어가 안 됨
+
+뜻:
+
+- 예전엔 `gh_control_server.py`와 `worker.py`를 터미널로 띄웠기 때문에 세션이 쉽게 끊겼고
+- Rhino를 다시 열었을 때 `mcpstart`도 빠질 수 있었습니다
+
+현재 권장 해결:
+
+1. LaunchAgent 설치
+2. Rhino와 GH 파일 다시 열기
+3. 필요하면 Rhino 명령줄에 `mcpstart`
+4. [http://127.0.0.1:8001/api/health](http://127.0.0.1:8001/api/health) 확인
 
 ### B. worker에서 `CERTIFICATE_VERIFY_FAILED`
 
@@ -195,6 +269,11 @@ python3 /Users/cantturnsmacbook/Documents/codex/rhino/gh-web-viewer/runner/worke
 1. worker를 다시 실행
 2. 웹에서 슬라이더를 한 번 바꿔 job 생성
 3. 다시 `published/model` 확인
+
+추가 확인:
+
+- `curl http://127.0.0.1:8001/api/health`
+- `lsof -nP -iTCP:1999 -sTCP:LISTEN`
 
 ### D. SUMMARY는 바뀌는데 모델은 안 바뀜
 
@@ -245,7 +324,7 @@ Render에서:
 ## 8. 지금 시스템의 한계
 
 - Rhino/Grasshopper는 아직 로컬 컴퓨터에 의존합니다.
-- worker가 꺼지면 공개 웹의 제어는 멈춥니다.
+- LaunchAgent를 설치해도 RhinoMCP 자체는 Rhino 안에서 다시 살아나야 하므로, Rhino를 재실행한 뒤에는 `mcpstart` 자동 시도가 실패할 수 있습니다.
 - Render free 인스턴스는 쉬면 잠들 수 있어서 첫 응답이 느릴 수 있습니다.
 - 여러 명이 동시에 제어하면 job 충돌 가능성이 있습니다.
 
